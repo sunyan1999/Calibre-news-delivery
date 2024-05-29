@@ -1,1 +1,4 @@
 Slashdot.org
+latimes
+les_echos
+kirkusreviews
