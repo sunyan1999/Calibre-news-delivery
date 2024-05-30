@@ -1,4 +1,3 @@
-Slashdot.org
-latimes
-les_echos
-kirkusreviews
+Los Angeles Times
+Kirkus Reviews
+Boston Globe
