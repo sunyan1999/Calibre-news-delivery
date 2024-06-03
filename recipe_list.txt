@@ -1,3 +1,6 @@
 #Kirkus Reviews
 #Boston Globe
-New Scientist
+#New Scientist
+New York Times Book Review
+Project Syndicate
+Scientific American
