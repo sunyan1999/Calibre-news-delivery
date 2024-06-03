@@ -1,2 +1,3 @@
-Kirkus Reviews
-Boston Globe
+#Kirkus Reviews
+#Boston Globe
+New Scientist
