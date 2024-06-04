@@ -16,6 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: calibre-news
     env:
+      output: converted_ebooks
       publisher: bookfere.com
       author: Calibre News Delivery
       relay: ${{ secrets.SMTP }}
@@ -24,7 +25,8 @@ jobs:
       secret: ${{ secrets.SECRET }}
       from: ${{ secrets.FROM }}
       to: ${{ secrets.TO }}
-      ext: ${{ secrets.format || 'epub' }}
+      ext: ${{ secrets.FORMAT || 'epub' }}
+      size: ${{ secrets.SIZE || 25 }}
     steps:
       - name: Checking Variable
         run: |
@@ -65,18 +67,20 @@ jobs:
             local key=$(echo "$name" | md5sum | cut -d ' ' -f 1)
             recipe_paths[$key]="$recipe_path"
           }
-          while read recipe_path || [ -n "$recipe_path" ]; do
-            if [ ! -n "$recipe_path" ]; then continue; fi
-            title="${recipe_path%.recipe}"
-            result="$(ebook-convert --list-recipes | grep "$title" || true)"
-            if [ ! -n "$result" ]; then
-              echo "Recipe \"$recipe_path\" does not exists"; continue
-            fi
-            if [ "${recipe_path##*.}" != 'recipe' ]; then
-              recipe_path="$recipe_path".recipe
-            fi
-            add_recipe
-          done < recipe_list.txt
+          if [ -f 'recipe_list.txt' ]; then
+            while read recipe_path || [ -n "$recipe_path" ]; do
+              if [ ! -n "$recipe_path" ]; then continue; fi
+              title="${recipe_path%.recipe}"
+              result="$(ebook-convert --list-recipes | grep "$title" || true)"
+              if [ ! -n "$result" ]; then
+                echo "Recipe \"$recipe_path\" does not exists"; continue
+              fi
+              if [ "${recipe_path##*.}" != 'recipe' ]; then
+                recipe_path="$recipe_path".recipe
+              fi
+              add_recipe
+            done < recipe_list.txt
+          fi
           while read -d '' recipe_path; do
             add_recipe
           done < <(find . -maxdepth 1 -type f -name '*.recipe' -print0)
@@ -93,6 +97,7 @@ jobs:
       - name: Converting Ebook
         if: ${{ success() }}
         run: |
+          mkdir $output
           convert_ebook() {
             ebook_name="${recipe_path%.*}"
             ebook_path="$ebook_name.${ext,,}"
@@ -105,7 +110,7 @@ jobs:
             echo $arguments | xargs ebook-convert "$recipe_path" "$ebook_path"
             title=$(ebook-meta "${ebook_path}" | grep '^Title *:' |
               sed 's/^Title *: *\(.*\)/\1/')
-            new_ebook_path="${title}.${ext,,}"
+            new_ebook_path="${output}/${title}.${ext,,}"
             echo "Renaming \"$ebook_path\" > \"$new_ebook_path\""
             mv "$ebook_path" "$new_ebook_path"
           }
@@ -113,7 +118,7 @@ jobs:
             convert_ebook &
           done < temp_recipe_list.txt
           wait
-          count=$(find . -maxdepth 1 -type f -name "*.${ext,,}" | wc -l)
+          count=$(find "$output" -type f -name "*.${ext,,}" | wc -l)
           echo "Ebook count: $count"
           if [ $count -eq 0 ]; then
             echo 'No ebook needs send'; exit 1
@@ -124,9 +129,21 @@ jobs:
           while read -d '' ebook_path; do
             filename="$(basename "$ebook_path")"
             title="${filename%.*}"
+            file_size=$(du -m "$ebook_path" | cut -f 1)
+            if [ $file_size -ge $size ]; then
+              echo "Size exceeds the limitation: $filename (${file_size}MB)"
+              continue
+            fi
             echo "Sending: \"$filename\""
-            calibre-smtp -a "${filename}" -r "$relay" --port="$port" \
+            calibre-smtp -a "$ebook_path" -r "$relay" --port="$port" \
               -e "${encrypt^^}" -u "$from" -p "$secret" -s "$title" \
               "$from" "$to" "Deliver \"${title}\""
-          done < <(find . -maxdepth 1 -type f -name "*.${ext,,}" -print0)
+          done < <(find "$output" -type f -name "*.${ext,,}" -print0)
           echo "All jobs done"
+      - name: Storing Ebook
+        if: ${{ success() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: Calibre-News-Delivery
+          path: ${{ env.output }}
+          retention-days: ${{ secrets.DAYS || 90 }}
