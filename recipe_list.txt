@@ -1,9 +1,9 @@
-#Kirkus Reviews
+Kirkus Reviews
 Boston Globe
 New Scientist - Online News w. subscription
-#New York Times Book Review
-#Project Syndicate
-#Scientific American
-South China Morning Post
+New York Times Book Review
+Project Syndicate
+Scientific American
+#South China Morning Post
 The New York Times (Web)
 The Washington Post | Print Edition
