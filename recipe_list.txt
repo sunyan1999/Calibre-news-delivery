@@ -1,6 +1,6 @@
-#Kirkus Reviews
-#Boston Globe
-#New Scientist
+Kirkus Reviews
+Boston Globe
+New Scientist - Online News w. subscription
 New York Times Book Review
 Project Syndicate
 Scientific American
